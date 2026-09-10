@@ -10,6 +10,21 @@
   border-radius: 10px; padding: 0.55rem 0.8rem; font-size: 0.9rem;
 }
 
+.zoom-toolbar {
+  display: flex; align-items: center; gap: 0.35rem;
+  background: var(--bg-elev); border: 1px solid var(--border);
+  border-radius: 10px; padding: 0.35rem 0.45rem;
+}
+.zoom-toolbar .zoom-preset.active {
+  background: var(--accent, #3b82f6);
+  color: #fff;
+  border-color: transparent;
+}
+.zoom-toolbar .zoom-btn {
+  min-width: 2rem;
+  font-weight: 700;
+}
+
 .timeline-scroll {
   overflow: auto;
   border: 1px solid var(--border);
@@ -32,6 +47,14 @@
   display: flex; align-items: flex-end;
 }
 .tl-time { display: flex; flex-direction: column; }
+.tl-quarters { display: flex; border-bottom: 1px solid var(--border); }
+.tl-quarter {
+  padding: 0.3rem 0.4rem; font-size: 0.72rem; font-weight: 700;
+  color: var(--accent-2, #22d3ee); border-right: 1px solid var(--border);
+  white-space: nowrap; overflow: hidden;
+  letter-spacing: 0.02em;
+  background: #0e1620;
+}
 .tl-months { display: flex; border-bottom: 1px solid var(--border); }
 .tl-month {
   padding: 0.35rem 0.4rem; font-size: 0.75rem; font-weight: 600;
@@ -48,6 +71,29 @@
 .tl-day.today .dom { color: var(--accent-2); font-weight: 700; }
 .tl-day .dow { opacity: 0.7; }
 .tl-day .dom { font-family: 'JetBrains Mono', monospace; }
+
+.tl-body { position: relative; }
+
+.tl-today-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--accent-2, #22d3ee);
+  box-shadow: 0 0 8px rgba(34, 211, 238, 0.55);
+  z-index: 4;
+  pointer-events: none;
+}
+.tl-today-line::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-2, #22d3ee);
+}
 
 .tl-row {
   display: flex; border-bottom: 1px solid var(--border);
@@ -80,6 +126,8 @@
   display: flex; align-items: center; gap: 0.35rem;
   color: white; font-size: 0.78rem; font-weight: 600;
   cursor: grab; user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
   box-shadow: 0 4px 12px rgba(0,0,0,0.25);
   z-index: 2;
   overflow: hidden;
@@ -107,4 +155,15 @@
 .legend {
   display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
   font-size: 0.85rem;
+}
+
+.touch-controls {
+  display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;
+}
+.touch-controls .reassign {
+  display: flex; align-items: center; gap: 0.35rem; font-size: 0.85rem;
+}
+.touch-controls select {
+  background: var(--bg); color: inherit; border: 1px solid var(--border);
+  border-radius: 8px; padding: 0.25rem 0.4rem;
 }

@@ -4,7 +4,6 @@ import { CSS } from '@dnd-kit/utilities';
 import type { TimelineBar } from '../types';
 import { formatDate, isWeekend, parseDate } from '../utils/dates';
 
-const DAY_WIDTH = 28;
 const ROW_HEIGHT = 56;
 const LABEL_WIDTH = 200;
 
@@ -28,6 +27,7 @@ export function PersonRow({
   rangeStart,
   selectedId,
   onSelect,
+  dayWidth,
 }: {
   personId: number;
   name: string;
@@ -38,6 +38,7 @@ export function PersonRow({
   rangeStart: Date;
   selectedId: number | null;
   onSelect: (id: number) => void;
+  dayWidth: number;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `row-${personId}`,
@@ -56,15 +57,22 @@ export function PersonRow({
         {days.map((d) => {
           const iso = formatDate(d);
           return (
-            <DayCell key={iso} personId={personId} date={iso} weekend={isWeekend(d)} />
+            <DayCell
+              key={iso}
+              personId={personId}
+              date={iso}
+              weekend={isWeekend(d)}
+              dayWidth={dayWidth}
+            />
           );
         })}
         {bars.map((bar) => (
           <Bar
             key={bar.assignment_id}
             bar={bar}
-            left={dayOffset(rangeStart, bar.start_date) * DAY_WIDTH + 2}
-            width={barWidthDays(bar.start_date, bar.end_date) * DAY_WIDTH - 4}
+            left={dayOffset(rangeStart, bar.start_date) * dayWidth + 2}
+            width={barWidthDays(bar.start_date, bar.end_date) * dayWidth - 4}
+            dayWidth={dayWidth}
             selected={selectedId === bar.assignment_id}
             onSelect={() => onSelect(bar.assignment_id)}
           />
@@ -78,10 +86,12 @@ function DayCell({
   personId,
   date,
   weekend,
+  dayWidth,
 }: {
   personId: number;
   date: string;
   weekend: boolean;
+  dayWidth: number;
 }) {
   const { setNodeRef } = useDroppable({
     id: `day-${personId}-${date}`,
@@ -91,7 +101,7 @@ function DayCell({
     <div
       ref={setNodeRef}
       className={'tl-cell' + (weekend ? ' weekend' : '')}
-      style={{ width: DAY_WIDTH, height: ROW_HEIGHT }}
+      style={{ width: dayWidth, height: ROW_HEIGHT }}
     />
   );
 }
@@ -100,12 +110,14 @@ export function Bar({
   bar,
   left,
   width,
+  dayWidth,
   selected,
   onSelect,
 }: {
   bar: TimelineBar;
   left: number;
   width: number;
+  dayWidth: number;
   selected: boolean;
   onSelect: () => void;
 }) {
@@ -116,10 +128,11 @@ export function Bar({
 
   const style: CSSProperties = {
     left,
-    width: Math.max(DAY_WIDTH - 4, width),
+    width: Math.max(dayWidth - 4, width),
     background: bar.colour,
     opacity: isDragging ? 0.35 : 1,
     transform: CSS.Translate.toString(transform),
+    touchAction: 'none',
   };
 
   return (
