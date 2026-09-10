@@ -11,18 +11,33 @@
 }
 
 .zoom-toolbar {
-  display: flex; align-items: center; gap: 0.35rem;
+  display: flex; align-items: center; gap: 0.45rem;
   background: var(--bg-elev); border: 1px solid var(--border);
-  border-radius: 10px; padding: 0.35rem 0.45rem;
-}
-.zoom-toolbar .zoom-preset.active {
-  background: var(--accent, #3b82f6);
-  color: #fff;
-  border-color: transparent;
+  border-radius: 10px; padding: 0.35rem 0.55rem;
 }
 .zoom-toolbar .zoom-btn {
   min-width: 2rem;
   font-weight: 700;
+}
+.zoom-slider-label {
+  display: flex; align-items: center; gap: 0.45rem;
+}
+.zoom-slider {
+  width: 140px;
+  accent-color: var(--accent, #3b82f6);
+  cursor: pointer;
+}
+.zoom-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  min-width: 2.5rem;
+}
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0);
+  white-space: nowrap; border: 0;
 }
 
 .timeline-scroll {
@@ -67,12 +82,31 @@
   padding: 0.2rem 0; border-right: 1px solid #1f293744;
   font-size: 0.65rem; color: var(--muted);
 }
+.tl-day.thin { border-right-color: transparent; }
 .tl-day.weekend { background: #0c101655; }
 .tl-day.today .dom { color: var(--accent-2); font-weight: 700; }
 .tl-day .dow { opacity: 0.7; }
 .tl-day .dom { font-family: 'JetBrains Mono', monospace; }
 
 .tl-body { position: relative; }
+
+/* Month / quarter vertical grid markers on the chart */
+.tl-grid-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+.tl-grid-line.month {
+  width: 1px;
+  background: rgba(148, 163, 184, 0.28);
+}
+.tl-grid-line.quarter {
+  width: 2px;
+  background: rgba(148, 163, 184, 0.55);
+  box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.12);
+}
 
 .tl-today-line {
   position: absolute;

@@ -22,13 +22,11 @@ import {
 } from '../utils/dates';
 import { PersonRow } from './TimelineRow';
 
-type ZoomLevel = 'week' | 'month' | 'quarter';
-
-const ZOOM: Record<ZoomLevel, { dayWidth: number; weeksAhead: number; label: string }> = {
-  week: { dayWidth: 40, weeksAhead: 8, label: 'Week' },
-  month: { dayWidth: 28, weeksAhead: 12, label: 'Month' },
-  quarter: { dayWidth: 12, weeksAhead: 26, label: 'Quarter' },
-};
+/** Continuous zoom: day column width in px */
+const DAY_WIDTH_MIN = 10;
+const DAY_WIDTH_MAX = 48;
+/** Default ~mid (maps to ~29px) */
+const DEFAULT_ZOOM = 50;
 
 const ROW_HEIGHT = 56;
 const LABEL_WIDTH = 200;
@@ -53,13 +51,37 @@ function quarterLabel(d: Date): string {
   return `Q${q} ${d.getFullYear()}`;
 }
 
+function zoomToDayWidth(zoom: number): number {
+  return Math.round(
+    DAY_WIDTH_MIN + ((DAY_WIDTH_MAX - DAY_WIDTH_MIN) * zoom) / 100
+  );
+}
+
+/** More weeks when zoomed out so the chart stays useful. */
+function weeksAheadForDayWidth(dayWidth: number): number {
+  const t =
+    (DAY_WIDTH_MAX - dayWidth) / (DAY_WIDTH_MAX - DAY_WIDTH_MIN);
+  return Math.round(8 + t * (26 - 8));
+}
+
+function isMonthBoundary(d: Date): boolean {
+  return d.getDate() === 1;
+}
+
+function isQuarterBoundary(d: Date): boolean {
+  return d.getDate() === 1 && d.getMonth() % 3 === 0;
+}
+
 export function Timeline({ data, onChanged }: Props) {
   const [activeBar, setActiveBar] = useState<TimelineBar | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
-  const [zoom, setZoom] = useState<ZoomLevel>('month');
+  const [zoom, setZoom] = useState(DEFAULT_ZOOM);
 
-  const dayWidth = ZOOM[zoom].dayWidth;
+  const dayWidth = zoomToDayWidth(zoom);
+  const showDayLabels = dayWidth >= 16;
+  /** When moderately zoomed out, only label Mondays (and always 1sts via month header). */
+  const dayLabelStep = dayWidth >= 28 ? 1 : dayWidth >= 20 ? 2 : 7;
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -76,7 +98,7 @@ export function Timeline({ data, onChanged }: Props) {
     start.setDate(start.getDate() - 7);
 
     let end = new Date(start);
-    end.setDate(end.getDate() + ZOOM[zoom].weeksAhead * 7 - 1);
+    end.setDate(end.getDate() + weeksAheadForDayWidth(dayWidth) * 7 - 1);
 
     for (const b of data.bars) {
       const bs = parseDate(b.start_date);
@@ -88,7 +110,7 @@ export function Timeline({ data, onChanged }: Props) {
       }
     }
     return { start, end, days: eachDay(start, end) };
-  }, [data.bars, zoom]);
+  }, [data.bars, dayWidth]);
 
   const months = useMemo(() => {
     const groups: { label: string; span: number }[] = [];
@@ -118,6 +140,18 @@ export function Timeline({ data, onChanged }: Props) {
       }
     }
     return groups;
+  }, [range.days]);
+
+  const gridMarkers = useMemo(() => {
+    const markers: { index: number; kind: 'month' | 'quarter' }[] = [];
+    range.days.forEach((d, index) => {
+      if (isQuarterBoundary(d)) {
+        markers.push({ index, kind: 'quarter' });
+      } else if (isMonthBoundary(d)) {
+        markers.push({ index, kind: 'month' });
+      }
+    });
+    return markers;
   }, [range.days]);
 
   const todayIso = formatDate(new Date());
@@ -188,14 +222,13 @@ export function Timeline({ data, onChanged }: Props) {
   }
 
   const selected = data.bars.find((b) => b.assignment_id === selectedId);
-  const showMonths = zoom !== 'quarter';
-  const showDays = zoom === 'week' || zoom === 'month';
 
-  const zoomLevels: ZoomLevel[] = ['week', 'month', 'quarter'];
-  function nudgeZoom(dir: -1 | 1) {
-    const i = zoomLevels.indexOf(zoom);
-    const next = zoomLevels[Math.min(zoomLevels.length - 1, Math.max(0, i + dir))];
-    setZoom(next);
+  function shouldShowDayLabel(d: Date, index: number): boolean {
+    if (!showDayLabels) return false;
+    if (dayLabelStep === 1) return true;
+    if (isMonthBoundary(d)) return true;
+    if (dayLabelStep === 7) return d.getDay() === 1; // Monday
+    return index % dayLabelStep === 0;
   }
 
   return (
@@ -213,27 +246,34 @@ export function Timeline({ data, onChanged }: Props) {
             type="button"
             className="btn sm zoom-btn"
             aria-label="Zoom out"
-            disabled={zoom === 'quarter'}
-            onClick={() => nudgeZoom(1)}
+            disabled={zoom <= 0}
+            onClick={() => setZoom((z) => Math.max(0, z - 10))}
           >
             −
           </button>
-          {zoomLevels.map((z) => (
-            <button
-              key={z}
-              type="button"
-              className={'btn sm zoom-preset' + (zoom === z ? ' active' : '')}
-              onClick={() => setZoom(z)}
-            >
-              {ZOOM[z].label}
-            </button>
-          ))}
+          <label className="zoom-slider-label">
+            <span className="muted sr-only">Zoom</span>
+            <input
+              type="range"
+              className="zoom-slider"
+              min={0}
+              max={100}
+              step={1}
+              value={zoom}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={zoom}
+              aria-label={`Zoom ${dayWidth}px per day`}
+              onChange={(e) => setZoom(Number(e.target.value))}
+            />
+            <span className="zoom-value muted">{dayWidth}px</span>
+          </label>
           <button
             type="button"
             className="btn sm zoom-btn"
             aria-label="Zoom in"
-            disabled={zoom === 'week'}
-            onClick={() => nudgeZoom(-1)}
+            disabled={zoom >= 100}
+            onClick={() => setZoom((z) => Math.min(100, z + 10))}
           >
             +
           </button>
@@ -325,43 +365,57 @@ export function Timeline({ data, onChanged }: Props) {
                     </div>
                   ))}
                 </div>
-                {showMonths && (
-                  <div className="tl-months">
-                    {months.map((m) => (
-                      <div
-                        key={m.label + m.span}
-                        className="tl-month"
-                        style={{ width: m.span * dayWidth }}
-                      >
-                        {m.label}
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {showDays && (
+                <div className="tl-months">
+                  {months.map((m) => (
+                    <div
+                      key={m.label + m.span}
+                      className="tl-month"
+                      style={{ width: m.span * dayWidth }}
+                    >
+                      {m.label}
+                    </div>
+                  ))}
+                </div>
+                {showDayLabels && (
                   <div className="tl-days">
-                    {range.days.map((d) => (
-                      <div
-                        key={formatDate(d)}
-                        className={
-                          'tl-day' +
-                          (isWeekend(d) ? ' weekend' : '') +
-                          (formatDate(d) === todayIso ? ' today' : '')
-                        }
-                        style={{ width: dayWidth }}
-                      >
-                        <span className="dow">
-                          {d.toLocaleString('en-GB', { weekday: 'narrow' })}
-                        </span>
-                        <span className="dom">{d.getDate()}</span>
-                      </div>
-                    ))}
+                    {range.days.map((d, index) => {
+                      const show = shouldShowDayLabel(d, index);
+                      return (
+                        <div
+                          key={formatDate(d)}
+                          className={
+                            'tl-day' +
+                            (isWeekend(d) ? ' weekend' : '') +
+                            (formatDate(d) === todayIso ? ' today' : '') +
+                            (show ? '' : ' thin')
+                          }
+                          style={{ width: dayWidth }}
+                        >
+                          {show && (
+                            <>
+                              <span className="dow">
+                                {d.toLocaleString('en-GB', { weekday: 'narrow' })}
+                              </span>
+                              <span className="dom">{d.getDate()}</span>
+                            </>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
             </div>
 
             <div className="tl-body">
+              {gridMarkers.map((m) => (
+                <div
+                  key={`${m.kind}-${m.index}`}
+                  className={`tl-grid-line ${m.kind}`}
+                  style={{ left: LABEL_WIDTH + m.index * dayWidth }}
+                  aria-hidden
+                />
+              ))}
               {todayIndex >= 0 && (
                 <div
                   className="tl-today-line"
